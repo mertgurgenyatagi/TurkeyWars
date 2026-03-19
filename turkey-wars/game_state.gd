@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 
 # Global game state manager to pass data between the Map and the Battlefield
 
