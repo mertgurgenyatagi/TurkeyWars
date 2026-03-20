@@ -13,6 +13,7 @@ enum State { IDLE, MOVE, ATTACK, DEAD }
 @export var movement_speed: float = 5.0
 @export var is_ranged: bool = false
 @export var is_backline: bool = false
+@export var default_faces_left: bool = false
 
 var current_state: State = State.IDLE
 var target: Node3D = null
@@ -109,11 +110,10 @@ func _physics_process(delta: float):
 		velocity.z = dir.z * movement_speed
 		
 	# Face the correct horizontal direction
-	# Assuming base images face right, so if target is to our left, flip horizontally
 	if target.global_position.x > global_position.x:
-		sprite.flip_h = false
+		sprite.flip_h = default_faces_left
 	else:
-		sprite.flip_h = true
+		sprite.flip_h = not default_faces_left
 		
 	move_and_slide()
 
