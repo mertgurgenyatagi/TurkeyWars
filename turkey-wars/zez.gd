@@ -12,6 +12,8 @@ extends Node3D
 
 var attacker_count_label: Label
 var defender_count_label: Label
+var battle_result_panel: PanelContainer
+var battle_result_label: Label
 
 var battle_ended_flag = false
 var initial_spawn_done = false
@@ -154,25 +156,89 @@ func _setup_hud():
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud_layer.add_child(root)
 
+	# Left card: attackers — gold left-accent with big red count.
+	var attacker_card := PanelContainer.new()
+	attacker_card.anchor_left = 0.0
+	attacker_card.anchor_right = 0.0
+	attacker_card.anchor_top = 0.0
+	attacker_card.anchor_bottom = 0.0
+	attacker_card.offset_left = 20
+	attacker_card.offset_top = 14
+	attacker_card.offset_right = 240
+	attacker_card.offset_bottom = 130
+	root.add_child(attacker_card)
+	TWUIStyle.style_panel_container_accent(attacker_card)
+
+	var attacker_vbox := VBoxContainer.new()
+	attacker_vbox.add_theme_constant_override("separation", 4)
+	attacker_card.add_child(attacker_vbox)
+
+	var attackers_title := Label.new()
+	attackers_title.text = "ATTACKERS"
+	TWUIStyle.style_label_muted(attackers_title)
+	attacker_vbox.add_child(attackers_title)
+
 	attacker_count_label = Label.new()
-	attacker_count_label.text = "Attackers: 0"
-	attacker_count_label.position = Vector2(24, 14)
-	attacker_count_label.add_theme_font_size_override("font_size", 28)
-	attacker_count_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
-	root.add_child(attacker_count_label)
+	attacker_count_label.text = "0"
+	TWUIStyle.style_label(attacker_count_label, true)
+	attacker_count_label.add_theme_color_override("font_color", TWUIStyle.COLOR_ACCENT_RED)
+	attacker_count_label.add_theme_font_size_override("font_size", 42)
+	attacker_vbox.add_child(attacker_count_label)
+
+	# Right card: defenders — blue accent with big blue count.
+	var defender_card := PanelContainer.new()
+	defender_card.anchor_left = 1.0
+	defender_card.anchor_right = 1.0
+	defender_card.anchor_top = 0.0
+	defender_card.anchor_bottom = 0.0
+	defender_card.offset_left = -240
+	defender_card.offset_top = 14
+	defender_card.offset_right = -20
+	defender_card.offset_bottom = 130
+	root.add_child(defender_card)
+	var def_card_sb := TWUIStyle.make_card_accent_stylebox()
+	def_card_sb.border_color = TWUIStyle.COLOR_ACCENT_BLUE
+	defender_card.add_theme_stylebox_override("panel", def_card_sb)
+
+	var defender_vbox := VBoxContainer.new()
+	defender_vbox.add_theme_constant_override("separation", 4)
+	defender_card.add_child(defender_vbox)
+
+	var defenders_title := Label.new()
+	defenders_title.text = "DEFENDERS"
+	TWUIStyle.style_label_muted(defenders_title)
+	defender_vbox.add_child(defenders_title)
 
 	defender_count_label = Label.new()
-	defender_count_label.text = "Defenders: 0"
-	defender_count_label.anchor_left = 1.0
-	defender_count_label.anchor_right = 1.0
-	defender_count_label.offset_left = -320
-	defender_count_label.offset_right = -24
-	defender_count_label.offset_top = 14
-	defender_count_label.offset_bottom = 58
-	defender_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	defender_count_label.add_theme_font_size_override("font_size", 28)
-	defender_count_label.add_theme_color_override("font_color", Color(0.3, 0.3, 1.0))
-	root.add_child(defender_count_label)
+	defender_count_label.text = "0"
+	TWUIStyle.style_label(defender_count_label, true)
+	defender_count_label.add_theme_color_override("font_color", TWUIStyle.COLOR_ACCENT_BLUE)
+	defender_count_label.add_theme_font_size_override("font_size", 42)
+	defender_vbox.add_child(defender_count_label)
+
+	# Battle result banner — centered, fades in on victory.
+	battle_result_panel = PanelContainer.new()
+	battle_result_panel.visible = false
+	battle_result_panel.anchor_left = 0.5
+	battle_result_panel.anchor_right = 0.5
+	battle_result_panel.anchor_top = 0.0
+	battle_result_panel.anchor_bottom = 0.0
+	battle_result_panel.offset_left = -380
+	battle_result_panel.offset_right = 380
+	battle_result_panel.offset_top = 120
+	battle_result_panel.offset_bottom = 210
+	root.add_child(battle_result_panel)
+	TWUIStyle.style_panel_container_accent(battle_result_panel)
+
+	var banner_vbox := VBoxContainer.new()
+	battle_result_panel.add_child(banner_vbox)
+
+	battle_result_label = Label.new()
+	battle_result_label.text = "VICTORY"
+	TWUIStyle.style_label(battle_result_label, true)
+	battle_result_label.add_theme_font_size_override("font_size", 32)
+	battle_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner_vbox.add_child(battle_result_label)
 
 func _process(_delta: float):
 	_update_team_counters()
@@ -191,8 +257,8 @@ func _update_team_counters():
 		elif u.team == 1 and u.current_state != u.State.DEAD:
 			defender_alive += 1
 
-	attacker_count_label.text = "Attackers: %d" % attacker_alive
-	defender_count_label.text = "Defenders: %d" % defender_alive
+	attacker_count_label.text = "%d" % attacker_alive
+	defender_count_label.text = "%d" % defender_alive
 
 	if not battle_ended_flag:
 		# Need to make sure units actually spawned first
@@ -210,7 +276,27 @@ func _end_battle(attacker_won: bool):
 
 	print("Battle Over. Attacker Won: ", attacker_won)
 
+	_show_battle_result(attacker_won)
+
 	# Small delay before changing scene
 	await get_tree().create_timer(3.0).timeout
 
 	GameState.resolve_battle(attacker_won)
+
+
+func _show_battle_result(attacker_won: bool) -> void:
+	if not battle_result_panel or not battle_result_label:
+		return
+
+	battle_result_panel.visible = true
+	battle_result_panel.modulate.a = 0.0
+
+	if attacker_won:
+		battle_result_label.text = "Attackers Victory"
+		battle_result_label.add_theme_color_override("font_color", TWUIStyle.COLOR_ACCENT_RED)
+	else:
+		battle_result_label.text = "Defenders Victory"
+		battle_result_label.add_theme_color_override("font_color", TWUIStyle.COLOR_ACCENT_BLUE)
+
+	var tween := create_tween()
+	tween.tween_property(battle_result_panel, "modulate:a", 1.0, 0.18)
